@@ -1,6 +1,16 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
 import Swal from "sweetalert2";
 import { LangContext } from "../App";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+} from "firebase/firestore";
+import { db } from "../firebase";
+
 
 export default function SmartReminders() {
   const { lang } = useContext(LangContext);
@@ -14,6 +24,31 @@ export default function SmartReminders() {
   const LAST_TRIGGER_KEY = `lg_last_trigger_${userKey}`;
 
   /* ================= LANGUAGE ================= */
+  /* ================= FIREBASE LOAD REMINDERS ================= */
+const loadRemindersFromFirebase = async () => {
+  try {
+    const q = query(
+      collection(db, "reminders"),
+      where("userKey", "==", userKey),
+      orderBy("createdAt", "asc")
+    );
+
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+      const firebaseReminders = snapshot.docs.map((doc) => ({
+        id: doc.id, // Firebase id
+        ...doc.data(),
+      }));
+
+      setReminders(firebaseReminders);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(firebaseReminders));
+    }
+  } catch (err) {
+    console.error("Firebase reminder load failed, using local data", err);
+  }
+};
+
   const t = {
     en: {
       title: "Smart Reminders & Alerts",
@@ -51,6 +86,7 @@ export default function SmartReminders() {
   };
 
   /* ================= STATES ================= */
+  
   const [reminders, setReminders] = useState(
     JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]")
   );
@@ -67,12 +103,20 @@ export default function SmartReminders() {
   );
 
   const alarmRef = useRef(null);
+  // ✅ HOLD LATEST REMINDERS (IMPORTANT)
+const remindersRef = useRef(reminders);
+
+useEffect(() => {
+  remindersRef.current = reminders;
+}, [reminders]);
+
 
   /* ================= INIT ================= */
   useEffect(() => {
     alarmRef.current = new Audio("/alarm.mp3");
     alarmRef.current.preload = "auto";
     alarmRef.current.volume = 1.0;
+    loadRemindersFromFirebase();
   }, []);
 
   useEffect(() => {
@@ -88,26 +132,40 @@ export default function SmartReminders() {
   }, []);
 
   /* ================= SOUND ================= */
-  const enableSound = () => {
-    alarmRef.current
-      ?.play()
-      .then(() => {
-        alarmRef.current.pause();
-        alarmRef.current.currentTime = 0;
-        setSoundEnabled(true);
-        Swal.fire("🔊", t[lang].soundOn, "success");
-      })
-      .catch(() => Swal.fire("Retry", "Click again to enable", "warning"));
-  };
+ const enableSound = async () => {
+  try {
+    const audio = alarmRef.current;
+
+    // 🔓 Unlock audio context
+    audio.muted = true;
+    await audio.play();
+    audio.pause();
+    audio.currentTime = 0;
+    audio.muted = false;
+
+    setSoundEnabled(true);
+
+    Swal.fire("🔊 Sound Enabled", "Alarm will play on reminders", "success");
+  } catch (err) {
+    Swal.fire("⚠️ Click Again", "Browser blocked sound", "warning");
+  }
+};
+
 
   const playAlarm = (ms = 8000) => {
+  if (!soundEnabled || !alarmRef.current) return;
+
+  alarmRef.current.currentTime = 0;
+  alarmRef.current.play().catch(() => {
+    console.warn("Audio blocked by browser");
+  });
+
+  setTimeout(() => {
+    alarmRef.current.pause();
     alarmRef.current.currentTime = 0;
-    alarmRef.current.play();
-    setTimeout(() => {
-      alarmRef.current.pause();
-      alarmRef.current.currentTime = 0;
-    }, ms);
-  };
+  }, ms);
+};
+
 
   /* ================= SAVE PER USER ================= */
   const saveReminders = (list) => {
@@ -121,7 +179,31 @@ export default function SmartReminders() {
       return Swal.fire(t[lang].fill);
 
     const entry = { ...newReminder, id: Date.now(), notified: false };
+    // 🔥 Save reminder to Firebase (ADD ONLY)
+addDoc(collection(db, "reminders"), {
+  userKey,
+  type: newReminder.type,
+  text: newReminder.text,
+  date: newReminder.date,
+  time: newReminder.time,
+  notified: false,
+  createdAt: new Date(),
+});
+
     saveReminders([...reminders, entry]);
+    if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.ready.then((reg) => {
+    if (reg.active) {
+      reg.active.postMessage({
+        title: `⏰ ${newReminder.type}`,
+        body: newReminder.text,
+        time: `${newReminder.date}T${newReminder.time}:00`,
+      });
+    }
+  });
+}
+
+
 
     Swal.fire(t[lang].addedTitle, t[lang].added, "success");
 
@@ -129,43 +211,113 @@ export default function SmartReminders() {
   };
 
   /* ================= CHECK REMINDERS ================= */
-  useEffect(() => {
-    const id = setInterval(() => {
-      const now = new Date();
-      const d = now.toISOString().split("T")[0];
-      const hhmm = now.toTimeString().slice(0, 5);
+  const showActivePopup = (r) => {
+  Swal.fire({
+    title: `⏰ ${r.type}`,
+    text: r.text,
+    icon: "info",
+    confirmButtonText: "OK",
+    backdrop: true,
+  });
+};
+useEffect(() => {
+  const id = setInterval(() => {
+    const now = new Date();
+    const d = now.toISOString().split("T")[0];
+    const hhmm = now.toTimeString().slice(0, 5);
 
-      reminders.forEach((r) => {
-        if (r.date === d && r.time === hhmm && !r.notified) {
-          if (soundEnabled) playAlarm();
+    remindersRef.current.forEach((r) => {
+      if (r.date === d && r.time === hhmm && !r.notified) {
 
-          window.focus();
-          alert(`${r.type}: ${r.text}`);
+        if (soundEnabled) playAlarm();
 
-          if ("Notification" in window && Notification.permission === "granted") {
-            navigator.serviceWorker.ready.then((reg) =>
-              reg.showNotification(`⏰ ${r.type}`, {
-                body: r.text,
-                icon: "/icon-192.png",
-              })
-            );
-          }
+        // ✅ ALWAYS show popup when app is open
+Swal.fire({
+  title: `⏰ ${r.type}`,
+  text: r.text,
+  icon: "info",
+  confirmButtonText: "OK",
+});
 
-          const updated = reminders.map((x) =>
-            x.id === r.id ? { ...x, notified: true } : x
+// ✅ ALSO show system notification if tab is not focused
+if (
+  document.visibilityState !== "visible" &&
+  "Notification" in window &&
+  Notification.permission === "granted"
+) {
+  navigator.serviceWorker.ready.then((reg) =>
+    reg.showNotification(`⏰ ${r.type}`, {
+      body: r.text,
+      icon: "/icon-192.png",
+      vibrate: [200, 100, 200],
+    })
+  );
+}
+ else if (
+          "Notification" in window &&
+          Notification.permission === "granted"
+        ) {
+          navigator.serviceWorker.ready.then((reg) =>
+            reg.showNotification(`⏰ ${r.type}`, {
+              body: r.text,
+              icon: "/icon-192.png",
+            })
           );
-
-          saveReminders(updated);
-
-          const stamp = new Date().toISOString();
-          setLastTriggered(stamp);
-          localStorage.setItem(LAST_TRIGGER_KEY, stamp);
         }
-      });
-    }, 1000);
 
-    return () => clearInterval(id);
-  }, [reminders, soundEnabled, lang]);
+        const updated = remindersRef.current.map((x) =>
+          x.id === r.id ? { ...x, notified: true } : x
+        );
+
+        saveReminders(updated);
+
+        const stamp = new Date().toISOString();
+        setLastTriggered(stamp);
+        localStorage.setItem(LAST_TRIGGER_KEY, stamp);
+      }
+    });
+  }, 1000);
+
+  return () => clearInterval(id);
+}, [soundEnabled]);
+
+  // useEffect(() => {
+  //   const id = setInterval(() => {
+  //     const now = new Date();
+  //     const d = now.toISOString().split("T")[0];
+  //     const hhmm = now.toTimeString().slice(0, 5);
+
+  //     reminders.forEach((r) => {
+  //       if (r.date === d && r.time === hhmm && !r.notified) {
+  //         if (soundEnabled) playAlarm();
+
+  //         window.focus();
+  //         // alert(`${r.type}: ${r.text}`);
+
+  //         if ("Notification" in window && Notification.permission === "granted") {
+  //           navigator.serviceWorker.ready.then((reg) =>
+  //             reg.showNotification(`⏰ ${r.type}`, {
+  //               body: r.text,
+  //               icon: "/icon-192.png",
+  //             })
+  //           );
+  //         }
+
+  //         const updated = reminders.map((x) =>
+  //           x.id === r.id ? { ...x, notified: true } : x
+  //         );
+
+  //         saveReminders(updated);
+
+  //         const stamp = new Date().toISOString();
+  //         setLastTriggered(stamp);
+  //         localStorage.setItem(LAST_TRIGGER_KEY, stamp);
+  //       }
+  //     });
+  //   }, 1000);
+
+  //   return () => clearInterval(id);
+  // }, [reminders, soundEnabled, lang]);
 
   /* ================= DELETE ================= */
   const deleteReminder = (id) =>

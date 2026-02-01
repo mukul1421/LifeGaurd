@@ -1,5 +1,10 @@
 import React, { useState } from "react";
 import "./Auth.css";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { signInWithPopup } from "firebase/auth";
+import { auth, googleProvider } from "../firebase";
+
+
 
 export default function Signup({ onSuccess, switchToLogin }) {
   const [username, setUsername] = useState("");
@@ -25,7 +30,7 @@ export default function Signup({ onSuccess, switchToLogin }) {
     else setStrength("Strong");
   };
 
-  const handleSignup = (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
 
     if (!username.trim() || !email.trim() || !pass.trim()) {
@@ -38,20 +43,56 @@ export default function Signup({ onSuccess, switchToLogin }) {
       return;
     }
 
-    localStorage.setItem(
-  "lg_user",
-  JSON.stringify({
+    try {
+  const res = await createUserWithEmailAndPassword(auth, email, pass);
+
+  // ✅ Set display name
+  await updateProfile(res.user, {
+    displayName: username,
+  });
+
+  const user = {
+    uid: res.user.uid,
     name: username,
-    email: email,
-    password: pass, // 🔑 REQUIRED
-  })
-);
+    email: res.user.email,
+    provider: "password",
+  };
 
+  localStorage.setItem("lg_user", JSON.stringify(user));
+  localStorage.setItem("lg_auth", "true");
 
-    localStorage.setItem("lg_auth", "true");
+  setError("");
+  if (onSuccess) onSuccess();
+} catch (err) {
+  setError(err.message);
+}
+
 
     if (onSuccess) onSuccess();
   };
+  const handleGoogleSignup = async () => {
+  try {
+    const res = await signInWithPopup(auth, googleProvider);
+
+    const user = {
+      uid: res.user.uid,
+      name: res.user.displayName || "",
+      email: res.user.email,
+      photo: res.user.photoURL || "",
+      provider: "google",
+    };
+
+    localStorage.setItem("lg_user", JSON.stringify(user));
+    localStorage.setItem("lg_auth", "true");
+
+    setError("");
+    if (onSuccess) onSuccess(); // ✅ SAME FLOW
+  } catch (err) {
+    setError("Google signup failed");
+    console.error(err);
+  }
+};
+
 
   return (
     <div className="auth-container">
@@ -108,6 +149,10 @@ export default function Signup({ onSuccess, switchToLogin }) {
           <button className="btn-primary" type="submit">
             Create Account
           </button>
+          <button type="button" className="btn-primary" style={{ background: "#4285F4", marginTop: 10 }} onClick={handleGoogleSignup} >
+            🔐 Sign up with Google
+          </button>
+
         </form>
 
         <p className="switch-text">

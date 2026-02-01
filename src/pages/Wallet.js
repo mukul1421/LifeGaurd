@@ -1,9 +1,28 @@
 import React, { useState, useEffect } from "react";
+// 🔥 Firebase (ADD ONLY)
+import {
+  ref,
+  uploadBytes,
+  getDownloadURL,
+} from "firebase/storage";
+
+import {
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+} from "firebase/firestore";
+
+import { db, storage } from "../firebase";
+
 
 export default function MedicalWallet() {
   // ⭐ Get Logged In User
+  
   const user = JSON.parse(localStorage.getItem("lg_user") || "{}");
-  const userKey = user?.email || "guest";
+  const userKey = user?.uid || user?.email ||"guest";
 
   // ⭐ Use USER SPECIFIC STORAGE
   const STORAGE_KEY = `lg_medical_records_${userKey}`;
@@ -62,6 +81,36 @@ export default function MedicalWallet() {
       alertDelete: "रिकॉर्ड हटाना चाहते हैं?",
     },
   };
+  /* ================= FIREBASE LOAD WALLET ================= */
+const loadWalletFromFirebase = async () => {
+  try {
+    const q = query(
+      collection(db, "wallet_items"),
+      where("userKey", "==", userKey),
+      orderBy("uploadedAt", "desc")
+    );
+
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+        const firebaseRecords = snapshot.docs.map((doc) => {
+          const d = doc.data();
+          return {
+            id: doc.id,
+            ...d,
+            date: d.uploadedAt?.toDate
+              ? d.uploadedAt.toDate().toLocaleDateString()
+              : "",
+          };
+        });
+
+        setRecords(firebaseRecords);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(firebaseRecords));
+      }
+    } catch (err) {
+      console.error("Firebase wallet load failed", err);
+    }
+  };
 
   const saveRecords = (updated) => {
     setRecords(updated);
@@ -77,7 +126,7 @@ export default function MedicalWallet() {
     }
   };
 
-  const addRecord = () => {
+  const addRecord = async () => {
     if (!fileName.trim()) return alert(t[lang].alertName);
 
     const reader = new FileReader();
@@ -103,7 +152,38 @@ export default function MedicalWallet() {
       resetForm();
       alert(t[lang].alertAdd);
     }
+    
+// 🔥 Save file + metadata to Firebase (ADD ONLY)
+if (file) {
+  const fileRef = ref(
+    storage,
+    `wallet_uploads/${userKey}/${Date.now()}_${file.name}`
+  );
+
+await uploadBytes(fileRef, file);
+const fileUrl = await getDownloadURL(fileRef);
+
+await addDoc(collection(db, "wallet_items"), {
+  userKey,
+  name: fileName,
+  type: fileType || "Document",
+  notes: fileNotes,
+  fileUrl,
+  fileName: file.name,
+  uploadedAt: new Date(),
+    });
+} else {
+  await addDoc(collection(db, "wallet_items"), {
+    userKey,
+    name: fileName,
+    type: fileType || "Document",
+    notes: fileNotes,
+    uploadedAt: new Date(),
+  });
+}
+
   };
+  
 
   const resetForm = () => {
     setFileName("");
@@ -121,6 +201,10 @@ export default function MedicalWallet() {
     document.title = t[lang].title;
   }, [lang]);
 
+  useEffect(() => {
+  loadWalletFromFirebase(); // 🔥 ADD THIS
+}, []);
+
   return (
     
     <div className="card" style={{ padding: 25 }}>
@@ -132,7 +216,6 @@ export default function MedicalWallet() {
 
       <h2>💼 {t[lang].title}</h2>
       <p className="muted">{t[lang].subtitle}</p>
-
       <div className="card">
         <h3>{t[lang].addRecord}</h3>
 
@@ -189,34 +272,35 @@ export default function MedicalWallet() {
                   📅 {t[lang].addedOn}: {r.date}
                 </p>
 
-                {r.fileData && (
-                  <>
-                    <p>
-                      📎 <b>{t[lang].attached}:</b> {r.fileName}
-                    </p>
+                {(r.fileData || r.fileUrl) && (
+  <>
+    <p>
+      📎 <b>{t[lang].attached}:</b> {r.fileName}
+    </p>
 
-                    {r.fileData.includes("pdf") ? (
-                      <a
-                        href={r.fileData}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="btn"
-                      >
-                        📄 {t[lang].viewPDF}
-                      </a>
-                    ) : (
-                      <img
-                        src={r.fileData}
-                        alt={r.fileName}
-                        style={{
-                          maxWidth: "100%",
-                          borderRadius: 10,
-                          marginTop: 8,
-                        }}
-                      />
-                    )}
-                  </>
-                )}
+    {(r.fileData || r.fileUrl).includes("pdf") ? (
+      <a
+        href={r.fileData || r.fileUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="btn"
+      >
+        📄 {t[lang].viewPDF}
+      </a>
+    ) : (
+      <img
+        src={r.fileData || r.fileUrl}
+        alt={r.fileName}
+        style={{
+          maxWidth: "100%",
+          borderRadius: 10,
+          marginTop: 8,
+        }}
+      />
+    )}
+  </>
+)}
+
 
                 <button
                   className="btn"

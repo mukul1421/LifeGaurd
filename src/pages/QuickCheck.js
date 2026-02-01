@@ -101,36 +101,60 @@ export default function QuickCheck() {
 
   /* ================== DISEASE DATABASE ================== */
   const diseaseDB = [
+  /* ================= INFECTIOUS ================= */
+
   {
     disease: "Dengue",
     symptoms: {
       fever: 3,
       headache: 2,
       "joint pain": 3,
+      "muscle pain": 2,
       rash: 3,
       nausea: 1,
-      vomiting: 1
+      vomiting: 1,
+      "eye pain": 2
     }
   },
+
   {
     disease: "Malaria",
     symptoms: {
       fever: 3,
       chills: 3,
-      sweating: 2,
+      sweating: 3,
       shivering: 2,
-      headache: 1
+      headache: 1,
+      nausea: 1
     }
   },
+
   {
     disease: "Typhoid",
     symptoms: {
       fever: 3,
       fatigue: 2,
       headache: 1,
-      "abdominal pain": 2
+      "abdominal pain": 2,
+      constipation: 1,
+      diarrhea: 1
     }
   },
+
+  {
+    disease: "COVID-19",
+    symptoms: {
+      fever: 2,
+      cough: 3,
+      fatigue: 2,
+      "loss of taste": 4,
+      "loss of smell": 4,
+      breathlessness: 3
+    }
+  },
+
+  /* ================= RESPIRATORY ================= */
+
   {
     disease: "Flu (Influenza)",
     symptoms: {
@@ -138,116 +162,243 @@ export default function QuickCheck() {
       cough: 2,
       fatigue: 2,
       "body ache": 2,
-      chills: 1
+      chills: 1,
+      sore: 1
     }
   },
+
   {
     disease: "Common Cold",
     symptoms: {
       cold: 2,
       cough: 1,
       "runny nose": 2,
+      sneezing: 2,
       sore: 1
     }
   },
+
+  {
+    disease: "Asthma",
+    symptoms: {
+      wheezing: 3,
+      breathlessness: 3,
+      cough: 1,
+      "chest tightness": 2
+    }
+  },
+
+  /* ================= NEUROLOGICAL ================= */
+
+  {
+    disease: "Migraine",
+    symptoms: {
+      headache: 2,
+      "throbbing pain": 3,
+      "one side": 2,
+      nausea: 2,
+      vomiting: 2,
+      "light sensitivity": 3,
+      "sound sensitivity": 3,
+      "smell sensitivity": 1
+    }
+  },
+
+  {
+    disease: "Tension Headache",
+    symptoms: {
+      headache: 3,
+      "tight band": 3,
+      stress: 2,
+      fatigue: 1,
+      neck: 1
+    }
+  },
+
+  /* ================= DIGESTIVE ================= */
+
+  {
+    disease: "Gastritis",
+    symptoms: {
+      "stomach pain": 3,
+      acidity: 2,
+      nausea: 2,
+      bloating: 1,
+      vomiting: 1
+    }
+  },
+
+  {
+    disease: "Food Poisoning",
+    symptoms: {
+      vomiting: 3,
+      diarrhea: 3,
+      nausea: 2,
+      "abdominal pain": 2,
+      fever: 1
+    }
+  },
+
+  /* ================= CARDIAC ================= */
+
   {
     disease: "Heart Problem",
     symptoms: {
       "chest pain": 4,
       "shortness of breath": 4,
       dizziness: 2,
-      fatigue: 1
+      sweating: 2,
+      nausea: 1
+    }
+  },
+
+  {
+    disease: "High Blood Pressure",
+    symptoms: {
+      headache: 2,
+      dizziness: 2,
+      fatigue: 1,
+      "blurred vision": 2
+    }
+  },
+
+  /* ================= MENTAL HEALTH ================= */
+
+  {
+    disease: "Anxiety Disorder",
+    symptoms: {
+      restlessness: 2,
+      nervousness: 2,
+      sweating: 1,
+      "rapid heartbeat": 2,
+      insomnia: 2
+    }
+  },
+
+  {
+    disease: "Depression",
+    symptoms: {
+      sadness: 3,
+      fatigue: 2,
+      insomnia: 2,
+      "loss of interest": 3,
+      hopelessness: 2
     }
   }
 ];
+const REQUIRED_SYMPTOMS = {
+  Dengue: ["fever"],
+  Malaria: ["fever", "chills"],
+  Typhoid: ["fever"],
+  "COVID-19": ["loss of taste", "loss of smell"],
+  Migraine: ["headache", "throbbing pain"],
+  "Heart Problem": ["chest pain"],
+  Asthma: ["wheezing"],
+};
+// 🚨 High-risk diseases (used for alerts)
+const HIGH_RISK_DISEASES = [
+  "Dengue",
+  "Malaria",
+  "COVID-19",
+  "Heart Problem"
+];
+
+// 💡 Medical advice mapping
 const adviceMap = {
   Dengue: {
     risk: "High",
-    advice: "Drink plenty of fluids. Avoid painkillers like ibuprofen.",
-    consult: "If fever lasts more than 2 days or platelets drop.",
+    advice: "Drink fluids, rest well, avoid painkillers like ibuprofen.",
+    consult: "Visit hospital if fever lasts >2 days."
   },
-
   Malaria: {
     risk: "High",
-    advice: "Do not delay treatment. Blood test recommended.",
-    consult: "Immediately visit a hospital.",
+    advice: "Immediate blood test required.",
+    consult: "Consult doctor immediately."
   },
-
-  "Typhoid": {
+  Typhoid: {
     risk: "Medium",
-    advice: "Rest, hydrate well, avoid outside food.",
-    consult: "If fever persists beyond 3 days.",
+    advice: "Hydration and light food recommended.",
+    consult: "If fever persists beyond 3 days."
   },
-
   "Flu (Influenza)": {
     risk: "Medium",
-    advice: "Rest, fluids, and paracetamol if needed.",
-    consult: "If breathing issues occur.",
+    advice: "Rest and fluids.",
+    consult: "If breathing difficulty occurs."
   },
-
   "Common Cold": {
     risk: "Low",
-    advice: "Steam inhalation, rest, warm fluids.",
-    consult: "Usually not required.",
+    advice: "Steam inhalation and warm fluids.",
+    consult: "Usually not required."
   },
-
+  Migraine: {
+    risk: "Medium",
+    advice: "Rest in dark room, avoid loud noise.",
+    consult: "If frequent or severe."
+  },
   "Heart Problem": {
     risk: "Critical",
     advice: "Do NOT ignore chest pain.",
-    consult: "Call emergency services immediately.",
-  },
+    consult: "Call emergency services immediately."
+  }
 };
-const HIGH_RISK_DISEASES = [
-  "Dengue",
-  "Heart Problem",
-  "Malaria",
-  "COVID-19"
-];
+const SYMPTOM_SYNONYMS = {
+  "throbbing pain": ["throbbing headache", "pulsating pain"],
+  "light sensitivity": ["sensitivity to light", "photophobia"],
+  "sound sensitivity": ["sensitivity to sound", "phonophobia"],
+  "one side": ["one side", "left side", "right side"],
+  headache: ["headache", "head pain"],
+};
 
 
 
-
-
-
-  const analyzeSymptom = (input) => {
+const analyzeSymptom = (input) => {
   const textInput = input.toLowerCase();
   let results = [];
 
-  diseaseDB.forEach(disease => {
+  diseaseDB.forEach((disease) => {
     let score = 0;
     let maxScore = 0;
+    let matched = [];
 
     Object.entries(disease.symptoms).forEach(([symptom, weight]) => {
       maxScore += weight;
-      if (textInput.includes(symptom)) {
+
+      const variants = SYMPTOM_SYNONYMS[symptom] || [symptom];
+
+      if (variants.some(v => textInput.includes(v))) {
         score += weight;
+        matched.push(symptom);
       }
     });
 
-    if (score > 0) {
-      const confidence = Math.min(
-        Math.round((score / maxScore) * 100),
-        98
-      );
+    // ❌ If nothing matched, skip
+    if (matched.length === 0) return;
 
+    // 🚫 Required symptom rule
+    const required = REQUIRED_SYMPTOMS[disease.disease];
+    if (required && !required.some(r => matched.includes(r))) {
+      return;
+    }
+
+    // ✅ SAFE confidence calculation (NEVER > 100)
+    const rawConfidence = (score / maxScore) * 100;
+    const confidence = Math.min(100, Math.round(rawConfidence));
+
+    if (confidence >= 30) {
       results.push({
         name: disease.disease,
-        confidence
+        confidence,
+        matched
       });
     }
   });
 
-  if (results.length === 0) {
-    return [
-      { name: "No clear match — add more symptoms", confidence: 60 }
-    ];
+  if (!results.length) {
+    return [{ name: "Uncertain — add more symptoms", confidence: 0 }];
   }
 
-  return results
-    .sort((a, b) => b.confidence - a.confidence)
-    .slice(0, 3);
+  return results.sort((a, b) => b.confidence - a.confidence).slice(0, 3);
 };
-
   /* ================== VOICE INPUT ================== */
   const startVoiceInput = () => {
     const SpeechRecognition =

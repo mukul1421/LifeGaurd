@@ -1,6 +1,8 @@
 import React, { useState, createContext, useEffect } from "react";
 // import { Routes, Route, useNavigate, NavLink, useLocation } from "react-router-dom";
 import { Routes, Route, useNavigate, NavLink, useLocation } from "react-router-dom";
+import { collection, addDoc } from "firebase/firestore";
+import { db } from "./firebase";
 
 
 
@@ -48,6 +50,7 @@ export const strings = {
 export const LangContext = createContext({ lang: "en", setLang: () => {} });
 
 export default function App() {
+
   const [lang, setLang] = useState(localStorage.getItem("lg_lang") || "en");
   const navigate = useNavigate();
   const location = useLocation();
@@ -62,6 +65,25 @@ export default function App() {
       document.documentElement.setAttribute("data-theme", "dark");
     else document.documentElement.removeAttribute("data-theme");
   }, []);
+
+    // 🔥 Firebase test (ADD ONLY – does not affect app)
+  useEffect(() => {
+    const testFirebase = async () => {
+      try {
+        await addDoc(collection(db, "system_logs"), {
+          app: "LifeGuard",
+          message: "Firebase connected successfully",
+          time: new Date(),
+        });
+        console.log("✅ Firebase Firestore connected");
+      } catch (err) {
+        console.error("❌ Firebase error:", err);
+      }
+    };
+
+    testFirebase();
+  }, []);
+
 
   const handleLoginSuccess = () => navigate("/app");
   const switchToSignup = () => navigate("/auth/signup");

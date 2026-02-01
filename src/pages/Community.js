@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useContext } from "react";
 import { LangContext } from "../App";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  orderBy,
+} from "firebase/firestore";
+import { db } from "../firebase";
 
 export default function Community() {
   const { lang } = useContext(LangContext);
@@ -61,9 +69,37 @@ export default function Community() {
     setPosts(updated);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   };
+  /* ================= FIREBASE LOAD POSTS ================= */
+const loadPostsFromFirebase = async () => {
+  try {
+    const q = query(
+      collection(db, "community_posts"),
+      orderBy("createdAt", "desc")
+    );
+
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+      const firebasePosts = snapshot.docs.map((doc) => ({
+        id: doc.id,              // Firebase id
+        name: doc.data().name,
+        text: doc.data().text,
+        likes: doc.data().likes || 0,
+        comments: doc.data().comments || [],
+        date: doc.data().date || "Just now",
+      }));
+
+      setPosts(firebasePosts);
+    }
+  } catch (err) {
+    console.error("Firebase load failed, using local data", err);
+  }
+};
+
 
   /* ================= DEMO POSTS (USER SEPARATE) ================= */
   useEffect(() => {
+    loadPostsFromFirebase();
     if (posts.length === 0) {
       const demo = [
         {
@@ -136,6 +172,16 @@ export default function Community() {
       comments: [],
       date: lang === "hi" ? "अभी" : "Just now",
     };
+    // 🔥 Save to Firebase (ADD ONLY)
+addDoc(collection(db, "community_posts"), {
+  name: "You",
+  text: newPost,
+  likes: 0,
+  comments: [],
+  date: lang === "hi" ? "अभी" : "Just now",
+  createdAt: new Date(),
+});
+
 
     savePosts([newItem, ...posts]);
     setNewPost("");
