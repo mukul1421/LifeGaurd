@@ -5,35 +5,52 @@ const auth = require("../middleware/auth");
 
 router.use(auth);
 
-// CREATE
+/* ===== CREATE ===== */
 router.post("/", async (req, res) => {
   try {
+    const userId = req.headers["x-user-id"];
+
+    if (!userId) {
+      return res.status(401).json({ message: "User ID missing" });
+    }
+
     const check = new QuickCheck({
-      owner: req.user._id,
-      ...req.body,
+      userId,
+      symptoms: req.body.symptoms,
+      result: req.body.result,
     });
 
     const saved = await check.save();
-    res.status(201).json(saved);
+
+    res.json(saved);
   } catch (err) {
-    res.status(500).json(err);
+    console.error("QUICKCHECK ERROR:", err);
+    res.status(500).json({ message: err.message });
   }
 });
 
-// GET USER CHECKS
+
+
+/* ===== GET CURRENT USER ===== */
 router.get("/", async (req, res) => {
   try {
-    const checks = await QuickCheck.find({ owner: req.user._id });
+    const checks = await QuickCheck.find({
+      owner: req.user._id,
+    });
+
     res.json(checks);
   } catch (err) {
     res.status(500).json(err);
   }
 });
 
-// DELETE USER CHECKS
+/* ===== DELETE CURRENT USER ===== */
 router.delete("/", async (req, res) => {
   try {
-    await QuickCheck.deleteMany({ owner: req.user._id });
+    await QuickCheck.deleteMany({
+      owner: req.user._id,
+    });
+
     res.json({ message: "Cleared" });
   } catch (err) {
     res.status(500).json(err);

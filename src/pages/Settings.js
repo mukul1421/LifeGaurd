@@ -88,9 +88,14 @@ export default function Settings() {
     },
   };
 
-  const savedSettings = JSON.parse(localStorage.getItem("lg_settings") || "{}");
-  const savedUser = JSON.parse(localStorage.getItem("lg_user") || "{}");
-  const userId = savedUser?._id;
+ const savedUser = JSON.parse(localStorage.getItem("lg_user") || "{}");
+const userId = savedUser?._id;
+const USER_KEY = savedUser?.email || "guest";
+const SETTINGS_KEY = `lg_settings_${USER_KEY}`;
+
+const savedSettings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+
+
 
   const [darkMode, setDarkMode] = useState(savedSettings.darkMode || false);
   // const [accent, setAccent] = useState(savedSettings.accent || "#14b8a6");
@@ -99,16 +104,43 @@ export default function Settings() {
   const [avatar, setAvatar] = useState(savedSettings.avatar || "🙂");
   const [aiConsent, setAiConsent] = useState(savedSettings.aiConsent ?? true);
   const [notifications, setNotifications] = useState(
+    
     savedSettings.notifications || {
       medicine: true,
       tips: true,
       checkup: true,
     }
   );
+  /* ⭐ LOAD SETTINGS FROM BACKEND */
+useEffect(() => {
+  const loadSettings = async () => {
+    try {
+      const res = await api.get("/settings");
+
+      if (!res.data) return;
+
+      const s = res.data;
+
+      if (s.name) setName(s.name);
+      if (s.gender) setGender(s.gender);
+      if (s.avatar) setAvatar(s.avatar);
+      if (typeof s.darkMode === "boolean") setDarkMode(s.darkMode);
+      if (s.notifications) setNotifications(s.notifications);
+      if (typeof s.aiConsent === "boolean") setAiConsent(s.aiConsent);
+
+    } catch (err) {
+      console.error("Failed to load settings", err);
+    }
+  };
+
+  loadSettings();
+}, []);
+
 
   /* DARK MODE LOAD */
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem("lg_settings") || "{}");
+    const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+
 
     if (saved.darkMode) {
       document.documentElement.setAttribute("data-theme", "dark");
@@ -121,10 +153,12 @@ export default function Settings() {
 
   /* APPLY DARK MODE */
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem("lg_settings") || "{}");
+    const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+
     const updated = { ...saved, darkMode };
 
-    localStorage.setItem("lg_settings", JSON.stringify(updated));
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(updated));
+
 
     if (darkMode) document.documentElement.setAttribute("data-theme", "dark");
     else document.documentElement.removeAttribute("data-theme");
@@ -138,23 +172,34 @@ export default function Settings() {
   /* SAVE SETTINGS */
 const save = async () => {
   try {
-   await api.post("/settings/save", {
-  name,
-  gender,
-  avatar,
-  darkMode,
-  notifications,
-  aiConsent,
-});
+    await api.post("/settings/save", {
+      name,
+      gender,
+      avatar,
+      darkMode,
+      notifications,
+      aiConsent,
+    });
 
-
-
-    // ✅ UPDATE LOCAL USER
     const updatedUser = { ...savedUser, name };
     localStorage.setItem("lg_user", JSON.stringify(updatedUser));
 
+    // ⭐ ADD THIS BLOCK HERE
+    localStorage.setItem(
+      SETTINGS_KEY,
+      JSON.stringify({
+        name,
+        gender,
+        avatar,
+        darkMode,
+        notifications,
+        aiConsent,
+      })
+    );
+
     Swal.fire("Saved!", "Settings stored", "success");
   } catch (err) {
+
     console.error(err);
     Swal.fire("Error saving settings", "", "error");
   }

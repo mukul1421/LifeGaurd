@@ -3,6 +3,8 @@ import React, { useEffect, useState, useContext } from "react";
 import { Link } from "react-router-dom";
 import { LangContext } from "../App";
 
+import api from "../api";
+
 import {
   LineChart,
   Line,
@@ -30,22 +32,18 @@ export default function Dashboard() {
   const [walletData, setWalletData] = useState(null);
   const [symptoms, setSymptoms] = useState([]);
   const [reminders, setReminders] = useState([]);
-  useEffect(() => {
-  const saved =
-    JSON.parse(localStorage.getItem(`smart_reminders_${userKey}`)) || [];
-  setReminders(saved);
+ useEffect(() => {
+  api.get("/reminders/" + user._id)
+    .then((res) => setReminders(res.data))
+    .catch(console.error);
 }, [userKey]);
-
-
-
-
- 
 
 useEffect(() => {
-  const saved =
-    JSON.parse(localStorage.getItem(`lg_quickcheck_${userKey}`)) || [];
-  setSymptoms(saved);
+  api.get("/quickcheck/" + user._id)
+    .then((res) => setSymptoms(res.data))
+    .catch(console.error);
 }, [userKey]);
+
 
 
  
@@ -245,13 +243,16 @@ setChallenge(saved.challenge || null);
   };
 
  
+useEffect(() => {
+  api.get("/medical-wallet/" + user._id)
+    .then((res) => {
+      if (res.data.length > 0) {
+        setWalletData(res.data[0]);
+      }
+    })
+    .catch(console.error);
+}, []);
 
-  useEffect(() => {
-    const lastUpload = JSON.parse(
-      localStorage.getItem(`lg_wallet_last_upload_${userKey}`)
-    );
-    setWalletData(lastUpload);
-  }, []);
 
   const daysAgo = (dateStr) => {
   if (!dateStr) return "";

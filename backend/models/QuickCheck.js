@@ -1,14 +1,14 @@
 const mongoose = require("mongoose");
 
 const quickCheckSchema = new mongoose.Schema({
-  owner: {
+  userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true,
   },
 
-  mood: String,
-  notes: String,
+  symptoms: [String],
+  result: String,
 
   createdAt: {
     type: Date,

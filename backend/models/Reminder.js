@@ -7,11 +7,14 @@ const reminderSchema = new mongoose.Schema({
     required: true,
   },
 
-  text: String,
-  date: Date,
-  completed: {
-    type: Boolean,
-    default: false,
+  medicineName: String,
+  dosage: String,
+  time: String,
+  repeatDays: [String],
+
+  createdAt: {
+    type: Date,
+    default: Date.now,
   },
 });
 

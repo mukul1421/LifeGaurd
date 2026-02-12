@@ -5,32 +5,40 @@ const auth = require("../middleware/auth");
 
 router.use(auth);
 
-// CREATE
+/* ================= CREATE ================= */
 router.post("/", async (req, res) => {
   try {
     const reminder = new Reminder({
       owner: req.user._id,
-      ...req.body,
+      medicineName: req.body.medicineName,
+      dosage: req.body.dosage,
+      time: req.body.time,
+      repeatDays: req.body.repeatDays,
     });
 
     const saved = await reminder.save();
-    res.status(201).json(saved);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.json(saved);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Save failed", error: err.message });
   }
 });
 
-// GET USER REMINDERS
-router.get("/", async (req, res) => {
+
+/* ================= GET USER REMINDERS ================= */
+router.get("/:userId", async (req, res) => {
   try {
-    const reminders = await Reminder.find({ owner: req.user._id });
+    const reminders = await Reminder.find({
+      owner: req.params.userId, // ✅ FIX HERE
+    });
+
     res.json(reminders);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
-// UPDATE
+/* ================= UPDATE ================= */
 router.put("/:id", async (req, res) => {
   try {
     const updated = await Reminder.findOneAndUpdate(
@@ -38,22 +46,33 @@ router.put("/:id", async (req, res) => {
       req.body,
       { new: true }
     );
+
     res.json(updated);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-// DELETE
+/* ================= DELETE ================= */
+/* ===== DELETE REMINDER ===== */
 router.delete("/:id", async (req, res) => {
   try {
-    await Reminder.deleteOne({
-      _id: req.params.id,
-      owner: req.user._id,
-    });
-    res.json({ message: "Deleted" });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.log("DELETE ID:", req.params.id);
+    console.log("USER:", req.headers["x-user-id"]);
+
+    const deleted = await Reminder.findByIdAndDelete(req.params.id);
+
+    console.log("DELETED:", deleted);
+
+    if (!deleted) {
+      return res.status(404).json({ message: "Reminder not found" });
+    }
+
+    res.json({ message: "Deleted successfully" });
+
+  } catch (err) {
+    console.error("DELETE ERROR:", err);
+    res.status(500).json({ message: err.message });
   }
 });
 

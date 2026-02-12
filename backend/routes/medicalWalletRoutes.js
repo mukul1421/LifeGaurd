@@ -5,32 +5,41 @@ const auth = require("../middleware/auth");
 
 router.use(auth);
 
-// CREATE
+//
+// ✅ CREATE WALLET RECORD (PRIVATE)
+//
 router.post("/", async (req, res) => {
   try {
     const doc = new MedicalWallet({
-      owner: req.user._id,
+      owner: req.user._id,   // ⭐ link to logged user
       ...req.body,
     });
 
     const saved = await doc.save();
     res.status(201).json(saved);
   } catch (err) {
-    res.status(500).json(err);
+    res.status(500).json({ message: err.message });
   }
 });
 
-// GET USER WALLET
+//
+// ✅ GET CURRENT USER WALLET ONLY
+//
 router.get("/", async (req, res) => {
   try {
-    const docs = await MedicalWallet.find({ owner: req.user._id });
-    res.json(docs);
+    const records = await MedicalWallet.find({
+      owner: req.user._id,  // ⭐ user filter
+    });
+
+    res.json(records);
   } catch (err) {
-    res.status(500).json(err);
+    res.status(500).json({ message: err.message });
   }
 });
 
-// DELETE USER WALLET
+//
+// ✅ DELETE ONLY USER OWN RECORD
+//
 router.delete("/:id", async (req, res) => {
   try {
     await MedicalWallet.deleteOne({
@@ -40,7 +49,7 @@ router.delete("/:id", async (req, res) => {
 
     res.json({ message: "Deleted successfully" });
   } catch (err) {
-    res.status(500).json(err);
+    res.status(500).json({ message: err.message });
   }
 });
 

@@ -1,15 +1,18 @@
 const express = require("express");
 const router = express.Router();
 const CommunityPost = require("../models/CommunityPost");
+const auth = require("../middleware/auth");
 
-/* ===== CREATE POST ===== */
-router.post("/add", async (req, res) => {
+//
+// ✅ CREATE POST (logged user only)
+//
+router.post("/add", auth, async (req, res) => {
   try {
-    const { userId, username, postText } = req.body;
+    const { postText } = req.body;
 
     const newPost = new CommunityPost({
-      userId,
-      username,
+      userId: req.user._id,     // ⭐ from auth
+      username: req.user.name,  // ⭐ real user name
       postText,
     });
 
@@ -24,7 +27,9 @@ router.post("/add", async (req, res) => {
   }
 });
 
-/* ===== GET ALL POSTS ===== */
+//
+// ✅ GET ALL POSTS (public)
+//
 router.get("/", async (req, res) => {
   try {
     const posts = await CommunityPost.find().sort({

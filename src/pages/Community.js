@@ -85,69 +85,6 @@ useEffect(() => {
 
 
 
-  /* ================= DEMO POSTS (USER SEPARATE) ================= */
-  useEffect(() => {
-   
-    if (posts.length === 0) {
-      const demo = [
-        {
-          id: 1,
-          name: "Asha Worker Kavita",
-          text:
-            lang === "hi"
-              ? "ग्रामीण क्षेत्रों में साफ पानी पीने और पानी उबालने के लिए सभी को प्रोत्साहित करें। सुरक्षित रहें 💧"
-              : "Encourage everyone to drink clean water and boil it in rural areas. Stay safe 💧",
-          likes: 4,
-          comments: [
-            {
-              user: "Rahul",
-              text:
-                lang === "hi"
-                  ? "बहुत अच्छा रिमाइंडर है!"
-                  : "That’s a great reminder!",
-            },
-            {
-              user: "You",
-              text:
-                lang === "hi"
-                  ? "धन्यवाद कविता 🙏"
-                  : "Thanks Kavita 🙏",
-            },
-          ],
-          date: "1h ago",
-        },
-        {
-          id: 2,
-          name: "Rahul Sharma",
-          text:
-            lang === "hi"
-              ? "मैंने रोज़ सुबह 20 मिनट टहलना शुरू किया है, अब ज्यादा एनर्जी महसूस हो रही है! 🚶‍♂️"
-              : "I started walking every morning for 20 mins, feeling more energetic already! 🚶‍♂️",
-          likes: 7,
-          comments: [
-            {
-              user: "Asha Worker Kavita",
-              text:
-                lang === "hi"
-                  ? "ऐसे ही जारी रखें!"
-                  : "Keep it up!",
-            },
-            {
-              user: "You",
-              text:
-                lang === "hi"
-                  ? "यह प्रेरणादायक है!"
-                  : "That’s motivating!",
-            },
-          ],
-          date: "2h ago",
-        },
-      ];
-
-      savePosts(demo);
-    }
-  }, [lang]);
-
   /* ================= ADD POST ================= */
   const addPost = () => {
     if (newPost.trim() === "") return;
@@ -161,9 +98,11 @@ useEffect(() => {
       date: lang === "hi" ? "अभी" : "Just now",
     };
    api.post("/community/add", {
+  userId: user._id,   // ⭐ ADD THIS
   username: user.name || "You",
   postText: newPost,
 });
+
 
     
 

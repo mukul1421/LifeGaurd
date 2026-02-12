@@ -77,7 +77,9 @@ export default function MedicalWallet() {
 
   const fetchRecords = async () => {
     try {
-      const res = await axios.get(API);
+      const res = await api.get(`${API}/${user._id}`);
+
+
       if (res.data.length > 0) {
         setRecords(res.data);
       }
@@ -123,7 +125,8 @@ export default function MedicalWallet() {
         saveRecords([newRecord, ...records]);
 
         /* ⭐ BACKEND SAVE */
-        await axios.post(API, {
+       await api.post(API, {
+
          userId: "000000000000000000000000",
           documentName: fileName,
           documentType: fileType || "Document",
@@ -138,8 +141,10 @@ export default function MedicalWallet() {
       saveRecords([newRecord, ...records]);
 
       /* ⭐ BACKEND SAVE */
-      await axios.post(API, {
-        userId: "000000000000000000000000",
+    await api.post(API, {
+
+       userId: user._id,
+
         documentName: fileName,
         documentType: fileType || "Document",
         fileUrl: "",
@@ -157,7 +162,8 @@ const deleteRecord = async (id) => {
   try {
     // ⭐ If MongoDB record
     if (id.length === 24) {
-      await axios.delete(`${API}/${id}`);
+      await api.delete(`${API}/${id}`);
+
       fetchRecords();
     } 
     // ⭐ If Local record

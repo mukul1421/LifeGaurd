@@ -1,19 +1,18 @@
 const mongoose = require("mongoose");
 
 const medicalWalletSchema = new mongoose.Schema({
-  owner: {
+  userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true,
   },
 
-  bloodGroup: String,
-  allergies: String,
-  medications: String,
-  emergencyContact: String,
+  documentName: String,
+  documentType: String,
+  fileUrl: String,
   notes: String,
 
-  updatedAt: {
+  createdAt: {
     type: Date,
     default: Date.now,
   },

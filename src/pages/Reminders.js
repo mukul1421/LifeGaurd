@@ -112,12 +112,10 @@ useEffect(() => {
 
 const fetchReminders = async () => {
   try {
-    const res = await api.get(API);
-
+    const res = await api.get(`/reminders/${user._id}`);
 
     const formatted = res.data.map(r => ({
       id: r._id,
-      _id: r._id,
       text: r.medicineName,
       type: r.dosage,
       date: r.repeatDays?.[0],
@@ -126,12 +124,12 @@ const fetchReminders = async () => {
     }));
 
     setReminders(formatted);
-    localStorage.setItem("lg_reminders_dashboard", JSON.stringify(formatted));
 
   } catch (err) {
     console.error(err);
   }
 };
+
 
 
   /* ================= SOUND ================= */
@@ -181,37 +179,32 @@ const fetchReminders = async () => {
   if (!newReminder.text || !newReminder.date || !newReminder.time)
     return Swal.fire(t[lang].fill);
 
-  const entry = { ...newReminder, id: Date.now(), notified: false };
-
-  // ⭐ ADD BACKEND SAVE HERE
-  await api.post(API, {
-
-    userId: user?._id || "dummyUserId",
-    medicineName: newReminder.text,
-    dosage: newReminder.type,
-    time: newReminder.time,
-    repeatDays: [newReminder.date],
-  });
-
-  fetchReminders();   // ⭐ reload list from DB
-
-
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.ready.then((reg) => {
-      if (reg.active) {
-        reg.active.postMessage({
-          title: `⏰ ${newReminder.type}`,
-          body: newReminder.text,
-          time: `${newReminder.date}T${newReminder.time}:00`,
-        });
-      }
+  try {
+    await api.post("/reminders", {
+      userId: user._id,
+      medicineName: newReminder.text,
+      dosage: newReminder.type,
+      time: newReminder.time,
+      repeatDays: [newReminder.date],
     });
+
+    await fetchReminders(); // ⭐ refresh list
+
+    Swal.fire(t[lang].addedTitle, t[lang].added, "success");
+
+    setNewReminder({
+      type: "Medicine",
+      text: "",
+      date: "",
+      time: "",
+    });
+
+  } catch (err) {
+    console.error(err);
+    Swal.fire("Failed to add reminder", "", "error");
   }
-
-  Swal.fire(t[lang].addedTitle, t[lang].added, "success");
-
-  setNewReminder({ type: "Medicine", text: "", date: "", time: "" });
 };
+
 
   /* ================= CHECK REMINDERS ================= */
   const showActivePopup = (r) => {
@@ -279,24 +272,31 @@ if (document.visibilityState === "visible") {
 
 
   /* ================= DELETE ================= */
-const deleteReminder = (id) =>
-  Swal.fire({
+const deleteReminder = async (id) => {
+  if (!id) {
+    Swal.fire("Invalid reminder ID");
+    return;
+  }
+
+  const res = await Swal.fire({
     title: t[lang].deleteTitle,
     icon: "warning",
     showCancelButton: true,
-  }).then(async (res) => {
-    if (res.isConfirmed) {
-
-      // ⭐ BACKEND DELETE
-      await api.delete(`${API}/${id}`);
-
-
-      // ⭐ REFRESH LIST FROM DB
-      fetchReminders();
-
-      Swal.fire(t[lang].deleted, "", "success");
-    }
   });
+
+  if (!res.isConfirmed) return;
+
+  try {
+    await api.delete(`/reminders/${id}`);
+
+    fetchReminders(); // reload list
+    Swal.fire("Deleted!", "", "success");
+  } catch (err) {
+    console.error(err);
+    Swal.fire("Delete failed", "", "error");
+  }
+};
+
   
 
 
@@ -388,12 +388,13 @@ const deleteReminder = (id) =>
                 </div>
 
                 <button
-                  className="btn"
-                  style={{ background: "#ef4444" }}
-                  onClick={() => deleteReminder(r._id)}
-                >
-                  🗑
-                </button>
+  className="btn"
+  style={{ background: "#ef4444" }}
+  onClick={() => deleteReminder(r._id || r.id)}
+>
+  🗑
+</button>
+
               </div>
             </div>
           ))}
