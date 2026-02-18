@@ -1,18 +1,18 @@
-import axios from "axios";
+  import axios from "axios";
 
-const api = axios.create({
-  baseURL: "http://localhost:5000/api",
-});
+  const api = axios.create({
+    baseURL: "http://localhost:5000/api",
+  });
 
-/* ⭐ AUTO ATTACH USER ID */
-api.interceptors.request.use((config) => {
-  const user = JSON.parse(localStorage.getItem("lg_user") || "{}");
+  /* ⭐ AUTO ATTACH USER ID */
+  api.interceptors.request.use((config) => {
+    const user = JSON.parse(localStorage.getItem("lg_user") || "{}");
 
-  if (user?._id) {
-    config.headers["x-user-id"] = user._id;
-  }
+    if (user?._id) {
+      config.headers["x-user-id"] = user._id;
+    }
 
-  return config;
-});
+    return config;
+  });
 
-export default api;
+  export default api;
