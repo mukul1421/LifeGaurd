@@ -124,7 +124,11 @@ function MainApp() {
 
   // ✅ LOGOUT FUNCTION
   const handleLogout = () => {
-    localStorage.removeItem("lg_user");
+    
+localStorage.removeItem("lg_user");
+localStorage.removeItem("lg_token");
+localStorage.removeItem("lg_auth");
+
 
     
 

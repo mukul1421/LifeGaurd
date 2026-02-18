@@ -10,6 +10,11 @@ import { useNavigate } from "react-router-dom";
 
 export default function LandingPage() {
   const navigate = useNavigate();
+   useEffect(() => {
+    const auth = localStorage.getItem("lg_auth");
+    if (auth === "true") navigate("/app");
+  }, []);
+
 
   useEffect(() => {
     const reveals = document.querySelectorAll(".reveal");

@@ -1,18 +1,19 @@
-  import axios from "axios";
+import axios from "axios";
 
-  const api = axios.create({
-    baseURL: "http://localhost:5000/api",
-  });
+const api = axios.create({
+  baseURL: "http://localhost:5000/api",
+});
 
-  /* ⭐ AUTO ATTACH USER ID */
-  api.interceptors.request.use((config) => {
-    const user = JSON.parse(localStorage.getItem("lg_user") || "{}");
+/* ⭐ AUTO ATTACH TOKEN */
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("lg_token");
 
-    if (user?._id) {
-      config.headers["x-user-id"] = user._id;
-    }
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
 
-    return config;
-  });
+  return config;
+});
 
-  export default api;
+export default api;
+
